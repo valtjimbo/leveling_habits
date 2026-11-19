@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>EL SISTEMA // Solo Leveling App</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@600;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Orbitron', 'sans-serif'],
+            hud: ['Rajdhani', 'sans-serif'],
+          },
+          colors: {
+            sys: {
+              bg: '#040914',
+              panel: '#081226',
+              cyan: '#00e5ff',
+              blue: '#0077ff',
+              danger: '#ff1e42',
+              gold: '#fbbf24',
+              purple: '#a855f7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #040914;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.12) 0%, transparent 50%),
+        linear-gradient(rgba(0, 229, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.025) 1px, transparent 1px);
+      background-size: 100% 100%, 24px 24px, 24px 24px;
+      color: #e2e8f0;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sys-card {
+      background: linear-gradient(180deg, rgba(10, 24, 52, 0.94) 0%, rgba(5, 13, 30, 0.98) 100%);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(0, 229, 255, 0.05);
+    }
+
+    body.penalty-active .sys-card {
+      border-color: rgba(255, 30, 66, 0.6);
+      box-shadow: 0 0 18px rgba(255, 30, 66, 0.18);
+    }
+
+    .glow-text {
+      text-shadow: 0 0 8px rgba(0, 229, 255, 0.65);
+    }
+
+    .hud-check {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid #00e5ff;
+      border-radius: 5px;
+      background: rgba(0, 229, 255, 0.08);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .hud-check:checked {
+      background: #00e5ff;
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+    }
+    .hud-check:checked::after {
+      content: '✓';
+      color: #040914;
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .hud-check.gold {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.08);
+    }
+    .hud-check.gold:checked {
+      background: #fbbf24;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+    }
+
+    /* Scroll interno sutil solo si el móvil es muy pequeño */
+    .app-scroll::-webkit-scrollbar {
+      width: 3px;
+    }
+    .app-scroll::-webkit-scrollbar-thumb {
+      background: rgba(0, 229, 255, 0.3);
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="antialiased select-none">
+
+  <!-- Toast Flotante Compacto -->
+  <div id="system-toast" class="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-sm transform -translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div id="toast-box" class="sys-card rounded-xl px-3.5 py-2.5 border-l-4 border-cyan-400 flex items-center gap-2.5 shadow-2xl">
+      <span id="toast-icon" class="text-cyan-400 font-display font-bold text-sm">[!]</span>
+      <div class="min-w-0 flex-1">
+        <div id="toast-title" class="font-hud font-bold uppercase tracking-wider text-xs text-cyan-300 truncate">SISTEMA</div>
+        <div id="toast-msg" class="text-[11px] text-slate-200 truncate"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Universal (Info Misión, Cierre de Día, Progreso Mensual/Semanal, Ajustes) -->
+  <div id="system-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="sys-card rounded-2xl max-w-sm w-full p-5 border border-cyan-400/50 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-cyan-500/25 pb-2.5 mb-3">
+        <span id="modal-tag" class="font-hud font-bold tracking-widest text-[11px] uppercase text-cyan-400">[ DETALLE DEL SISTEMA ]</span>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none px-1">&times;</button>
+      </div>
+      <h3 id="modal-title" class="font-display text-base font-bold text-white mb-2"></h3>
+      <div id="modal-body" class="text-xs text-slate-300 space-y-2.5 mb-5 leading-relaxed"></div>
+      <div id="modal-actions" class="flex justify-end gap-2"></div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL TIPO APP (MAX-W-MD CENTRADO PARA MÓVIL/PWA) -->
+  <main class="w-full max-w-md mx-auto h-full flex flex-col px-3 pt-2.5 pb-2 gap-2.5 overflow-hidden">
+
+    <!-- ALERTA COMPACTA DE ZONA DE PENALIZACIÓN -->
+    <div id="penalty-banner" class="hidden shrink-0 rounded-xl bg-red-950/90 border border-red-500 px-3 py-2 flex items-center justify-between gap-2">
+      <div class="min-w-0">
+        <div class="font-hud font-bold text-[11px] uppercase tracking-wider text-red-400">⚠ ZONA DE PENALIZACIÓN ACTIVA</div>
+        <div class="text-[11px] text-red-200 truncate">Castigo: 150 Burpees + 0% Alcohol 7d</div>
+      </div>
+      <button onclick="completePenaltyQuest()" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-hud font-bold text-[11px] uppercase tracking-wider">
+        ✓ Cumplido
+      </button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- 1. CABECERA: PERFIL DEL JUGADOR + GRÁFICO HEXAGONAL (ARAÑA)         -->
+    <!-- =================================================================== -->
+    <section class="sys-card rounded-2xl p-3 shrink-0">
+      <div class="flex items-center justify-between gap-2">
+        
+        <!-- Izquierda: Rango, Nivel, Racha y XP -->
+        <div class="flex-1 min-w-0 space-y-1.5">
+          <div class="flex items-center gap-2">
+            <div class="w-11 h-11 rounded-xl bg-cyan-950/90 border border-cyan-400 flex flex-col items-center justify-center shrink-0 shadow-inner">
+              <span class="font-hud text-[9px] leading-none text-cyan-300 uppercase">RANGO</span>
+              <span id="player-rank" class="font-display text-xl font-black text-cyan-400 glow-text leading-tight">E</span>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <h1 class="font-display text-lg font-black text-white leading-none">NV. <span id="player-level" class="text-cyan-400">1</span></h1>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-400/50 text-amber-300 font-hud font-bold text-[11px] leading-none">
+                  🔥 <span id="player-streak">0</span>d
+                </span>
+              </div>
+              <p id="player-title" class="font-hud text-[11px] text-slate-400 truncate mt-0.5">Aspirante en Calibración</p>
+            </div>
+          </div>
+
+          <!-- Barra de XP -->
+          <div>
+            <div class="flex justify-between text-[10px] font-hud text-slate-400 mb-0.5">
+              <span>EXP ACTUAL</span>
+              <span><strong id="player-xp" class="text-cyan-300">0</strong> / <span id="player-next-xp">100</span> XP</span>
+            </div>
+            <div class="w-full h-2 bg-slate-950 rounded-full border border-cyan-500/30 overflow-hidden p-[1px]">
+              <div id="xp-bar" class="h-full rounded-full bg-gradient-to-r from-blue-600 via-cyan-400 to-teal-300 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Leyenda rápida del Hexágono -->
+          <div class="flex items-center gap-3 text-[10px] font-hud pt-0.5">
+            <span class="flex items-center gap-1 text-cyan-300"><span class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></span> Actual</span>
+            <span class="flex items-center gap-1 text-amber-300"><span class="w-2 h-2 rounded-full border border-amber-400 inline-block"></span> Objetivo</span>
+          </div>
+        </div>
+
+        <!-- Derecha: Gráfico Hexagonal (Araña SVG de 6 ejes) -->
+        <div class="w-[126px] h-[116px] shrink-0 flex items-center justify-center relative">
+          <svg id="radar-svg" viewBox="0 0 140 130" class="w-full h-full overflow-visible">
+            <!-- Se dibuja dinámicamente por JS -->
+          </svg>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 2. CONTROLES RÁPIDOS DE ESTADO (SUEÑO 6-10H + ESTADO SALUD/ALCOHOL) -->
+    <!-- =================================================================== -->
+    <section class="sys-card rounded-2xl p-2.5 shrink-0 space-y-2">
+      <!-- Fila Sueño (Botones 6h a 10h) -->
+      <div class="flex items-center justify-between gap-2">
+        <span class="font-hud font-bold text-xs uppercase tracking-wider text-emerald-400 shrink-0">💤 Sueño:</span>
+        <div class="grid grid-cols-5 gap-1 flex-1 max-w-[230px]" id="sleep-buttons">
+          <button onclick="selectSleepHours(6)" data-h="6" class="sleep-btn py-1 rounded-lg border border-slate-700 bg-slate-900/80 font-display text-xs font-bold text-slate-400 transition">6h</button>
+          <button onclick="selectSleepHours(7)" data-h="7" class="sleep-btn py-1 rounded-lg border border-slate-700 bg-slate-900/80 font-display text-xs font-bold text-slate-400 transition">7h</button>
+          <button onclick="selectSleepHours(8)" data-h="8" class="sleep-btn py-1 rounded-lg border border-slate-700 bg-slate-900/80 font-display text-xs font-bold text-slate-400 transition">8h</button>
+          <button onclick="selectSleepHours(9)" data-h="9" class="sleep-btn py-1 rounded-lg border border-slate-700 bg-slate-900/80 font-display text-xs font-bold text-slate-400 transition">9h</button>
+          <button onclick="selectSleepHours(10)" data-h="10" class="sleep-btn py-1 rounded-lg border border-slate-700 bg-slate-900/80 font-display text-xs font-bold text-slate-400 transition">10h</button>
+        </div>
+      </div>
+
+      <!-- Fila Estado Salud / Alcohol + Modo Entreno -->
+      <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+        <div class="flex items-center gap-1">
+          <span class="font-hud font-bold text-xs uppercase tracking-wider text-amber-400 mr-0.5">🛡️ Salud:</span>
+          <button onclick="setAlcoholStatus('clean')" id="alc-clean" class="px-2 py-1 rounded-lg border text-[11px] font-hud font-bold uppercase transition">0 Alc</button>
+          <button onclick="setAlcoholStatus('controlled')" id="alc-controlled" class="px-2 py-1 rounded-lg border text-[11px] font-hud font-bold uppercase transition">Máx 2</button>
+          <button onclick="setAlcoholStatus('excess')" id="alc-excess" class="px-2 py-1 rounded-lg border text-[11px] font-hud font-bold uppercase transition">Exceso</button>
+        </div>
+
+        <!-- Toggle Gimnasio / Casa -->
+        <button onclick="toggleWorkoutMode()" id="workout-toggle-btn" class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-400/50 text-cyan-300 font-hud font-bold text-[11px] uppercase tracking-wider shrink-0">
+          🏋️ Gym
+        </button>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 3. CAJA CENTRAL DE MISIONES DIARIAS + DESPLEGABLE OCULTAS (ESTILO LOL) -->
+    <!-- =================================================================== -->
+    <section class="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto app-scroll pr-0.5">
+      
+      <!-- CAJA A: MISIONES OBLIGATORIAS (COMPACTAS CON BOTÓN INFO) -->
+      <div class="sys-card rounded-2xl p-3 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <h2 class="font-hud font-bold text-xs uppercase tracking-widest text-cyan-300">Misiones Diarias Obligatorias</h2>
+          </div>
+          <span id="mandatory-counter" class="px-2 py-0.5 rounded bg-cyan-500/15 border border-cyan-400/40 font-display text-[11px] font-bold text-cyan-300">0/5</span>
+        </div>
+
+        <div id="mandatory-quests-list" class="space-y-1.5">
+          <!-- Renderizado JS compacto -->
+        </div>
+      </div>
+
+      <!-- CAJA B: VENTANA DESPLEGABLE DE MISIONES OCULTAS (ESTILO LEAGUE OF LEGENDS) -->
+      <div class="sys-card rounded-2xl border-amber-400/40 overflow-hidden shrink-0">
+        <button onclick="toggleBonusDrawer()" class="w-full px-3.5 py-2.5 flex items-center justify-between bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent hover:from-amber-500/25 transition">
+          <div class="flex items-center gap-2">
+            <span class="text-amber-400 text-sm">✦</span>
+            <span class="font-hud font-bold text-xs uppercase tracking-widest text-amber-300">Misiones Ocultas (Ascenso Rápido)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="bonus-counter" class="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 font-display text-[10px] font-bold text-amber-300">0/4</span>
+            <span id="bonus-chevron" class="text-amber-300 text-xs transition-transform duration-200">▼</span>
+          </div>
+        </button>
+
+        <!-- Contenido Desplegable Estilo LoL -->
+        <div id="bonus-drawer-content" class="hidden px-3 pb-3 pt-1 space-y-1.5 border-t border-amber-500/20 bg-slate-950/60">
+          <!-- Renderizado JS estilo LoL -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 4. BARRA INFERIOR DE ACCIÓN RÁPIDA (ESTILO APP NATIVA)              -->
+    <!-- =================================================================== -->
+    <footer class="shrink-0 grid grid-cols-3 gap-2 pt-0.5">
+      <button onclick="openProgressModal()" class="sys-card hover:border-cyan-400 py-2.5 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 transition">
+        <span class="text-sm leading-none">📊</span>
+        <span class="font-hud font-bold text-[11px] uppercase tracking-wider text-slate-200">Progreso</span>
+      </button>
+
+      <button onclick="openCloseDayModal()" class="py-2.5 px-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 flex flex-col items-center justify-center gap-0.5 shadow-lg shadow-cyan-500/25 transition">
+        <span class="text-sm leading-none">⚡</span>
+        <span class="font-hud font-black text-[11px] uppercase tracking-wider">Cerrar Día</span>
+      </button>
+
+      <button onclick="openSystemMenuModal()" class="sys-card hover:border-cyan-400 py-2.5 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 transition">
+        <span class="text-sm leading-none">⚙️</span>
+        <span class="font-hud font-bold text-[11px] uppercase tracking-wider text-slate-200">Sistema / IA</span>
+      </button>
+    </footer>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // ESTADO Y CONFIGURACIÓN DEL SISTEMA (LOCALSTORAGE)
+    // =========================================================================
+    const STORAGE_KEY = 'solo_leveling_app_v2';
+
+    const DEFAULT_STATE = {
+      level: 1,
+      xp: 0,
+      streak: 0,
+      bestStreak: 0,
+      daysCompletedTotal: 0,
+      penaltyMode: false,
+      bonusDrawerOpen: false,
+      workoutMode: 'gym', // 'gym' | 'home'
+      sleepHours: null,   // 6, 7, 8, 9, 10
+      alcoholStatus: 'clean', // 'clean' | 'controlled' | 'excess'
+      // 6 Ejes para el Gráfico de Araña (Hexágono) - Valor actual (10 a 100) y Objetivo (100)
+      radar: {
+        fuerza: 35,     // Fuerza muscular
+        estetica: 40,   // Definición / físico
+        sueno: 25,      // Descanso 8h
+        nutricion: 50,  // Dieta + 0 alcohol
+        mente: 30,      // Agilidad y memoria
+        social: 35      // Vínculos reales
+      },
+      dailyQuests: [
+        {
+          id: 'dq_workout',
+          type: 'mandatory',
+          axis: 'fuerza',
+          axis2: 'estetica',
+          xp: 30,
+          shortGym: 'Entreno Gimnasio (45m)',
+          shortHome: 'Casa: 100 Flex/Sent/Abd',
+          infoGym: 'Sesión de fuerza e hipertrofia en gimnasio enfocada en sobrecarga progresiva y estética.',
+          infoHome: 'Plan B sin material: 100 flexiones + 100 sentadillas + 100 abdominales repartidos en series.',
+          completed: false
+        },
+        {
+          id: 'dq_sleep',
+          type: 'mandatory',
+          axis: 'sueno',
+          xp: 25,
+          short: 'Dormir ≥ 8h (Hora fija)',
+          info: 'Acostarse a una hora constante sin pantallas 30 min antes. Selecciona tus horas en el panel superior.',
+          completed: false
+        },
+        {
+          id: 'dq_nutrition',
+          type: 'mandatory',
+          axis: 'nutricion',
+          xp: 25,
+          short: 'Dieta Limpia + Control Alcohol',
+          info: 'Mantener comida limpia de diario y 0 alcohol (máximo 2 copas solo en eventos puntuales de finde).',
+          completed: false
+        },
+        {
+          id: 'dq_mental',
+          type: 'mandatory',
+          axis: 'mente',
+          xp: 25,
+          short: 'Entreno Mental (25 min)',
+          info: '10 min de cálculo/agilidad mental rápida + 15 min de lectura enfocada o ejercicios de memoria sin móvil.',
+          completed: false
+        },
+        {
+          id: 'dq_social',
+          type: 'mandatory',
+          axis: 'social',
+          xp: 25,
+          short: 'Check Social (Familia/Amigos)',
+          info: 'Escribir o llamar hoy a un familiar o amigo con el que lleves tiempo sin hablar para cuidar el vínculo.',
+          completed: false
+        },
+        // MISIONES OCULTAS (ESTILO LEAGUE OF LEGENDS)
+        {
+          id: 'bq_steps',
+          type: 'bonus',
+          axis: 'estetica',
+          xp: 20,
+          title: 'Caminata de Cazador',
+          desc: 'Completar 10.000 pasos o 20 min cardio',
+          completed: false
+        },
+        {
+          id: 'bq_sugar',
+          type: 'bonus',
+          axis: 'nutricion',
+          xp: 20,
+          title: 'Pureza Metabólica',
+          desc: '0% azúcares añadidos y ultraprocesados hoy',
+          completed: false
+        },
+        {
+          id: 'bq_memory',
+          type: 'bonus',
+          axis: 'mente',
+          xp: 25,
+          title: 'Enfoque Absoluto',
+          desc: '15 min de ejercicio de memoria sin pantallas',
+          completed: false
+        },
+        {
+          id: 'bq_call',
+          type: 'bonus',
+          axis: 'social',
+          xp: 30,
+          title: 'Alianza Reforzada',
+          desc: 'Llamada de voz o plan presencial con amigos/familia',
+          completed: false
+        }
+      ]
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+        const parsed = JSON.parse(raw);
+        return {
+          ...JSON.parse(JSON.stringify(DEFAULT_STATE)),
+          ...parsed,
+          radar: { ...DEFAULT_STATE.radar, ...(parsed.radar || {}) }
+        };
+      } catch (e) {
+        return JSON.parse(JSON.stringify(DEFAULT_STATE));
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+      renderAll();
+    }
+
+    // =========================================================================
+    // GRÁFICO HEXAGONAL DE ARAÑA (ACTUAL VS OBJETIVO)
+    // =========================================================================
+    function renderRadarChart() {
+      const svg = document.getElementById('radar-svg');
+      const cx = 70, cy = 65, maxR = 44;
+      const axes = [
+        { key: 'fuerza',    label: 'FUE' },
+        { key: 'estetica',  label: 'EST' },
+        { key: 'sueno',     label: 'SUE' },
+        { key: 'nutricion', label: 'NUT' },
+        { key: 'mente',     label: 'MEN' },
+        { key: 'social',    label: 'SOC' }
+      ];
+
+      const getPoint = (index, valuePercent) => {
+        const angle = (Math.PI / 3) * index - Math.PI / 2;
+        const r = (Math.min(100, Math.max(10, valuePercent)) / 100) * maxR;
+        return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+      };
+
+      let html = '';
+
+      // Niveles de fondo (33%, 66%, 100% Objetivo)
+      [33, 66, 100].forEach((lvl, idx) => {
+        const pts = axes.map((_, i) => getPoint(i, lvl).join(',')).join(' ');
+        const isTarget = lvl === 100;
+        html += `<polygon points="${pts}" fill="${isTarget ? 'rgba(251,191,36,0.04)' : 'none'}" stroke="${isTarget ? 'rgba(251,191,36,0.55)' : 'rgba(0,229,255,0.18)'}" stroke-width="${isTarget ? '1.2' : '0.8'}" ${isTarget ? 'stroke-dasharray="3,2"' : ''} />`;
+      });
+
+      // Líneas radiales y etiquetas
+      axes.forEach((ax, i) => {
+        const [xEnd, yEnd] = getPoint(i, 100);
+        const [xLbl, yLbl] = getPoint(i, 126);
+        html += `<line x1="${cx}" y1="${cy}" x2="${xEnd}" y2="${yEnd}" stroke="rgba(0,229,255,0.2)" stroke-width="0.8" />`;
+        html += `<text x="${xLbl}" y="${yLbl + 3}" text-anchor="middle" fill="#94a3b8" font-family="Rajdhani, sans-serif" font-weight="700" font-size="9.5">${ax.label}</text>`;
+      });
+
+      // Polígono de Estado Actual del Jugador
+      const currentPts = axes.map((ax, i) => getPoint(i, state.radar[ax.key] || 20).join(',')).join(' ');
+      html += `<polygon points="${currentPts}" fill="rgba(0, 229, 255, 0.28)" stroke="#00e5ff" stroke-width="1.8" />`;
+
+      // Vértices brillantes
+      axes.forEach((ax, i) => {
+        const [px, py] = getPoint(i, state.radar[ax.key] || 20);
+        html += `<circle cx="${px}" cy="${py}" r="2.3" fill="#00e5ff" />`;
+      });
+
+      svg.innerHTML = html;
+    }
+
+    // =========================================================================
+    // NIVEL, RANGO Y PROGRESIÓN DE ATRIBUTOS
+    // =========================================================================
+    function getNextLevelXP(lvl) {
+      return 100 + (lvl - 1) * 40;
+    }
+
+    function getRankInfo(lvl) {
+      if (lvl >= 35) return { rank: 'S', title: 'Monarca de las Sombras' };
+      if (lvl >= 25) return { rank: 'A', title: 'Cazador Rango Nacional' };
+      if (lvl >= 18) return { rank: 'B', title: 'Especialista Élite' };
+      if (lvl >= 11) return { rank: 'C', title: 'Guerrero Disciplinado' };
+      if (lvl >= 5)  return { rank: 'D', title: 'Despertado en Ascenso' };
+      return { rank: 'E', title: 'Aspirante en Calibración' };
+    }
+
+    function gainXP(amount, axis1, axis2, reason) {
+      if (state.penaltyMode) {
+        showToast('BLOQUEADO', 'Completa el castigo superior primero.', 'danger');
+        return;
+      }
+      state.xp += amount;
+      if (axis1 && state.radar[axis1] !== undefined) {
+        state.radar[axis1] = Math.min(100, state.radar[axis1] + 2);
+      }
+      if (axis2 && state.radar[axis2] !== undefined) {
+        state.radar[axis2] = Math.min(100, state.radar[axis2] + 1);
+      }
+
+      let leveledUp = false;
+      while (state.xp >= getNextLevelXP(state.level)) {
+        state.xp -= getNextLevelXP(state.level);
+        state.level += 1;
+        leveledUp = true;
+      }
+
+      if (leveledUp) {
+        const r = getRankInfo(state.level);
+        showToast('¡SUBIDA DE NIVEL!', `Nivel ${state.level} alcanzado (Rango ${r.rank})`);
+      } else if (reason) {
+        showToast(`+${amount} XP`, reason);
+      }
+    }
+
+    function removeXP(amount, axis1, axis2) {
+      state.xp = Math.max(0, state.xp - amount);
+      if (axis1 && state.radar[axis1] !== undefined) {
+        state.radar[axis1] = Math.max(15, state.radar[axis1] - 2);
+      }
+      if (axis2 && state.radar[axis2] !== undefined) {
+        state.radar[axis2] = Math.max(15, state.radar[axis2] - 1);
+      }
+    }
+
+    // =========================================================================
+    // INTERACCIONES PRINCIPALES
+    // =========================================================================
+    function toggleQuest(id) {
+      if (state.penaltyMode) {
+        showToast('ZONA DE PENALIZACIÓN', 'Supera el castigo antes de sumar misiones.', 'danger');
+        renderAll();
+        return;
+      }
+      const q = state.dailyQuests.find(item => item.id === id);
+      if (!q) return;
+
+      q.completed = !q.completed;
+      const label = q.id === 'dq_workout'
+        ? (state.workoutMode === 'gym' ? q.shortGym : q.shortHome)
+        : (q.short || q.title);
+
+      if (q.completed) {
+        gainXP(q.xp, q.axis, q.axis2, label);
+      } else {
+        removeXP(q.xp, q.axis, q.axis2);
+      }
+      saveState();
+    }
+
+    function showQuestInfo(id) {
+      const q = state.dailyQuests.find(item => item.id === id);
+      if (!q) return;
+      const title = q.id === 'dq_workout'
+        ? (state.workoutMode === 'gym' ? q.shortGym : q.shortHome)
+        : (q.short || q.title);
+      const desc = q.id === 'dq_workout'
+        ? (state.workoutMode === 'gym' ? q.infoGym : q.infoHome)
+        : (q.info || q.desc);
+
+      openModal(
+        'DETALLE DE MISIÓN',
+        title,
+        `<p>${desc}</p>
+         <div class="p-2.5 rounded-xl bg-slate-900 border border-cyan-500/30 flex justify-between items-center">
+           <span class="text-slate-400">Recompensa:</span>
+           <span class="font-display font-bold text-cyan-300">+${q.xp} XP (${q.axis.toUpperCase()})</span>
+         </div>`,
+        `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-hud font-bold uppercase text-xs">Entendido</button>`
+      );
+    }
+
+    function selectSleepHours(hours) {
+      state.sleepHours = hours;
+      if (hours >= 8) {
+        const sq = state.dailyQuests.find(q => q.id === 'dq_sleep');
+        if (sq && !sq.completed && !state.penaltyMode) {
+          sq.completed = true;
+          gainXP(sq.xp, sq.axis, null, `Sueño óptimo (${hours}h) completado`);
+        }
+      }
+      saveState();
+    }
+
+    function setAlcoholStatus(status) {
+      state.alcoholStatus = status;
+      if (status === 'excess') {
+        showToast('ALERTA DE SALUD', 'El exceso de alcohol bloquea el cierre perfecto del día.', 'danger');
+      }
+      saveState();
+    }
+
+    function toggleWorkoutMode() {
+      state.workoutMode = state.workoutMode === 'gym' ? 'home' : 'gym';
+      saveState();
+    }
+
+    function toggleBonusDrawer() {
+      state.bonusDrawerOpen = !state.bonusDrawerOpen;
+      saveState();
+    }
+
+    // =========================================================================
+    // CIERRE DE DÍA Y PENALIZACIÓN
+    // =========================================================================
+    function openCloseDayModal() {
+      const mandatory = state.dailyQuests.filter(q => q.type === 'mandatory');
+      const doneCount = mandatory.filter(q => q.completed).length;
+      const allDone = doneCount === mandatory.length && state.alcoholStatus !== 'excess';
+
+      if (state.penaltyMode) {
+        openModal(
+          'CASTIGO PENDIENTE',
+          'Zona de Penalización Activa',
+          `<p>Debes completar hoy la <strong class="text-red-400">Misión de Supervivencia</strong> (150 Burpees o 100 flexiones + 100 sentadillas + 4m plancha) antes de evaluar un nuevo día.</p>`,
+          `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-white font-hud font-bold uppercase text-xs">Cerrar</button>`
+        );
+        return;
+      }
+
+      if (allDone) {
+        openModal(
+          'EVALUACIÓN DIARIA',
+          '⚡ Día Perfecto Completado',
+          `<p class="text-emerald-300 font-semibold">✓ Has cumplido ${doneCount}/${mandatory.length} misiones obligatorias.</p>
+           <p>Al cerrar el día subirás tu racha a <strong class="text-amber-300">${state.streak + 1} días</strong>, ganarás <strong class="text-cyan-300">+40 XP</strong> y se prepararán las misiones de mañana.</p>`,
+          `<button onclick="closeModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-hud font-bold uppercase text-xs">Cancelar</button>
+           <button onclick="executeCloseDay(true)" class="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-hud font-bold uppercase text-xs">Confirmar</button>`
+        );
+      } else {
+        openModal(
+          'ADVERTENCIA DEL SISTEMA',
+          '⚠️ Misiones Incompletas',
+          `<p class="text-red-400 font-semibold">Solo llevas ${doneCount}/${mandatory.length} misiones obligatorias${state.alcoholStatus === 'excess' ? ' y exceso de alcohol' : ''}.</p>
+           <p>Si cierras el día ahora tu racha caerá a <strong>0</strong>, perderás <strong>50 XP</strong> y entrarás en <strong>Zona de Penalización</strong>.</p>`,
+          `<button onclick="closeModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-hud font-bold uppercase text-xs">Seguir hoy</button>
+           <button onclick="executeCloseDay(false)" class="px-4 py-2 rounded-xl bg-red-600 text-white font-hud font-bold uppercase text-xs">Asumir Castigo</button>`
+        );
+      }
+    }
+
+    function executeCloseDay(success) {
+      closeModal();
+      if (success) {
+        state.streak += 1;
+        state.daysCompletedTotal += 1;
+        if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+        gainXP(40, null, null, `¡Racha de ${state.streak} días! +40 XP`);
+      } else {
+        state.streak = 0;
+        state.penaltyMode = true;
+        if (state.xp >= 50) state.xp -= 50;
+        else if (state.level > 1) {
+          state.level -= 1;
+          state.xp = Math.max(0, getNextLevelXP(state.level) - 30);
+        } else state.xp = 0;
+        showToast('¡PENALIZACIÓN ACTIVADA!', 'Has fallado los mínimos diarios.', 'danger');
+      }
+
+      state.dailyQuests.forEach(q => q.completed = false);
+      state.sleepHours = null;
+      state.alcoholStatus = 'clean';
+      saveState();
+    }
+
+    function completePenaltyQuest() {
+      state.penaltyMode = false;
+      showToast('CASTIGO SUPERADO', 'Has salido de la Zona de Penalización.');
+      saveState();
+    }
+
+    // =========================================================================
+    // MODALES DE PROGRESO (RESUMEN DE CONSTANCIA) Y SISTEMA / IA / GITHUB
+    // =========================================================================
+    function openProgressModal() {
+      const r = state.radar;
+      const avg = Math.round((r.fuerza + r.estetica + r.sueno + r.nutricion + r.mente + r.social) / 6);
+      openModal(
+        'ANÁLISIS DE EVOLUCIÓN',
+        '📊 Progreso Actual vs. Objetivo',
+        `<div class="grid grid-cols-2 gap-2 text-xs">
+           <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+             <div class="text-slate-400">Días Superados</div>
+             <div class="font-display text-lg font-bold text-cyan-300">${state.daysCompletedTotal}</div>
+           </div>
+           <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+             <div class="text-slate-400">Mejor Racha</div>
+             <div class="font-display text-lg font-bold text-amber-300">${state.bestStreak} días</div>
+           </div>
+         </div>
+         <div class="space-y-1.5 pt-1">
+           <div class="flex justify-between text-[11px]"><span>Sincronización con Objetivo Global</span><span class="text-cyan-300 font-bold">${avg}%</span></div>
+           <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden"><div class="h-full bg-cyan-400" style="width:${avg}%"></div></div>
+         </div>
+         <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] pt-1 text-slate-300">
+           <div class="flex justify-between"><span>Fuerza:</span><strong class="text-cyan-300">${r.fuerza}%</strong></div>
+           <div class="flex justify-between"><span>Estética:</span><strong class="text-cyan-300">${r.estetica}%</strong></div>
+           <div class="flex justify-between"><span>Sueño 8h:</span><strong class="text-emerald-300">${r.sueno}%</strong></div>
+           <div class="flex justify-between"><span>Nutrición:</span><strong class="text-emerald-300">${r.nutricion}%</strong></div>
+           <div class="flex justify-between"><span>Mente:</span><strong class="text-purple-300">${r.mente}%</strong></div>
+           <div class="flex justify-between"><span>Social:</span><strong class="text-amber-300">${r.social}%</strong></div>
+         </div>`,
+        `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-hud font-bold uppercase text-xs">Cerrar</button>`
+      );
+    }
+
+    function openSystemMenuModal() {
+      openModal(
+        'NÚCLEO DEL SISTEMA',
+        '⚙️ Sincronización IA y GitHub',
+        `<p>Tus datos se guardan automáticamente en la caché (<code class="text-cyan-300">localStorage</code>) de tu móvil.</p>
+         <div class="space-y-2 pt-1">
+           <button onclick="copySummaryForAI()" class="w-full py-2.5 px-3 rounded-xl bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-hud font-bold uppercase text-xs text-left flex items-center justify-between">
+             <span>🤖 Copiar Estado para Evolucionar con IA</span><span>&rarr;</span>
+           </button>
+           <button onclick="downloadSelfHTML()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-hud font-bold uppercase text-xs text-left flex items-center justify-between">
+             <span>⬇️ Descargar index.html (GitHub Pages)</span><span>&rarr;</span>
+           </button>
+           <button onclick="hardResetSystem()" class="w-full py-2 px-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-400 font-hud font-bold uppercase text-xs text-left">
+             ⚠️ Reiniciar progreso a Nivel 1
+           </button>
+         </div>`,
+        `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-hud font-bold uppercase text-xs">Cerrar</button>`
+      );
+    }
+
+    function copySummaryForAI() {
+      const r = state.radar;
+      const summary = `📊 ESTADO SISTEMA SOLO LEVELING:
+- Nivel: ${state.level} (Rango ${getRankInfo(state.level).rank}) | XP: ${state.xp}/${getNextLevelXP(state.level)}
+- Racha: ${state.streak} días (Récord: ${state.bestStreak}d) | Días superados: ${state.daysCompletedTotal}
+- Hexágono: Fuerza ${r.fuerza}%, Estética ${r.estetica}%, Sueño ${r.sueno}%, Nutrición ${r.nutricion}%, Mente ${r.mente}%, Social ${r.social}%
+👉 Analiza mi progreso y dame nuevos retos o ajustes para subir de nivel.`;
+
+      const ta = document.createElement('textarea');
+      ta.value = summary;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      closeModal();
+      showToast('COPIADO PARA IA', 'Pégalo en el chat para recalibrar tus misiones.');
+    }
+
+    function downloadSelfHTML() {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      closeModal();
+      showToast('INDEX.HTML DESCARGADO', 'Súbelo a tu repositorio de GitHub Pages.');
+    }
+
+    function hardResetSystem() {
+      localStorage.removeItem(STORAGE_KEY);
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      closeModal();
+      saveState();
+      showToast('SISTEMA REINICIADO', 'Has vuelto al Nivel 1.');
+    }
+
+    // =========================================================================
+    // UTILIDADES MODAL Y TOAST
+    // =========================================================================
+    function openModal(tag, title, bodyHTML, actionsHTML) {
+      document.getElementById('modal-tag').textContent = `[ ${tag} ]`;
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = bodyHTML;
+      document.getElementById('modal-actions').innerHTML = actionsHTML;
+      const m = document.getElementById('system-modal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeModal() {
+      const m = document.getElementById('system-modal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    let toastTimer = null;
+    function showToast(title, msg, type = 'info') {
+      const toast = document.getElementById('system-toast');
+      const box = document.getElementById('toast-box');
+      const icon = document.getElementById('toast-icon');
+      const titleEl = document.getElementById('toast-title');
+      const msgEl = document.getElementById('toast-msg');
+
+      titleEl.textContent = title;
+      msgEl.textContent = msg;
+
+      if (type === 'danger') {
+        box.className = 'sys-card rounded-xl px-3.5 py-2.5 border-l-4 border-red-500 bg-red-950/95 flex items-center gap-2.5 shadow-2xl';
+        icon.className = 'text-red-400 font-display font-bold text-sm';
+        titleEl.className = 'font-hud font-bold uppercase tracking-wider text-xs text-red-400';
+      } else {
+        box.className = 'sys-card rounded-xl px-3.5 py-2.5 border-l-4 border-cyan-400 flex items-center gap-2.5 shadow-2xl';
+        icon.className = 'text-cyan-400 font-display font-bold text-sm';
+        titleEl.className = 'font-hud font-bold uppercase tracking-wider text-xs text-cyan-300';
+      }
+
+      toast.classList.remove('-translate-y-24', 'opacity-0');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('-translate-y-24', 'opacity-0');
+      }, 3000);
+    }
+
+    // =========================================================================
+    // RENDERIZADO GENERAL DE LA PANTALLA ÚNICA
+    // =========================================================================
+    function renderAll() {
+      // Penalización
+      const pBanner = document.getElementById('penalty-banner');
+      if (state.penaltyMode) {
+        document.body.classList.add('penalty-active');
+        pBanner.classList.remove('hidden');
+      } else {
+        document.body.classList.remove('penalty-active');
+        pBanner.classList.add('hidden');
+      }
+
+      // Perfil y XP
+      const rInfo = getRankInfo(state.level);
+      const nextXP = getNextLevelXP(state.level);
+      const pct = Math.min(100, Math.round((state.xp / nextXP) * 100));
+
+      document.getElementById('player-rank').textContent = rInfo.rank;
+      document.getElementById('player-title').textContent = rInfo.title;
+      document.getElementById('player-level').textContent = state.level;
+      document.getElementById('player-streak').textContent = state.streak;
+      document.getElementById('player-xp').textContent = state.xp;
+      document.getElementById('player-next-xp').textContent = nextXP;
+      document.getElementById('xp-bar').style.width = `${pct}%`;
+
+      // Gráfico Hexagonal
+      renderRadarChart();
+
+      // Botones Sueño 6h - 10h
+      document.querySelectorAll('.sleep-btn').forEach(btn => {
+        const h = parseInt(btn.dataset.h, 10);
+        if (state.sleepHours === h) {
+          btn.className = h >= 8
+            ? 'sleep-btn py-1 rounded-lg border border-emerald-400 bg-emerald-500/25 font-display text-xs font-bold text-emerald-300 shadow'
+            : 'sleep-btn py-1 rounded-lg border border-amber-400 bg-amber-500/25 font-display text-xs font-bold text-amber-300 shadow';
+        } else {
+          btn.className = 'sleep-btn py-1 rounded-lg border border-slate-700 bg-slate-900/80 font-display text-xs font-bold text-slate-400';
+        }
+      });
+
+      // Botones Salud / Alcohol
+      ['clean', 'controlled', 'excess'].forEach(st => {
+        const el = document.getElementById(`alc-${st}`);
+        if (state.alcoholStatus === st) {
+          if (st === 'clean') el.className = 'px-2 py-1 rounded-lg border border-emerald-400 bg-emerald-500/20 text-emerald-300 text-[11px] font-hud font-bold uppercase';
+          if (st === 'controlled') el.className = 'px-2 py-1 rounded-lg border border-amber-400 bg-amber-500/20 text-amber-300 text-[11px] font-hud font-bold uppercase';
+          if (st === 'excess') el.className = 'px-2 py-1 rounded-lg border border-red-500 bg-red-500/25 text-red-300 text-[11px] font-hud font-bold uppercase';
+        } else {
+          el.className = 'px-2 py-1 rounded-lg border border-slate-700 bg-slate-900/70 text-slate-400 text-[11px] font-hud font-bold uppercase';
+        }
+      });
+
+      // Botón Modo Entreno
+      const wBtn = document.getElementById('workout-toggle-btn');
+      wBtn.textContent = state.workoutMode === 'gym' ? '🏋️ Gym' : '🏠 Casa';
+
+      // Render Misiones Obligatorias (Ultra-compactas con botón ⓘ)
+      const mandList = document.getElementById('mandatory-quests-list');
+      mandList.innerHTML = '';
+      let mandDone = 0, mandTotal = 0;
+
+      state.dailyQuests.filter(q => q.type === 'mandatory').forEach(q => {
+        mandTotal++;
+        if (q.completed) mandDone++;
+        const label = q.id === 'dq_workout' ? (state.workoutMode === 'gym' ? q.shortGym : q.shortHome) : q.short;
+
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl border transition ${
+          q.completed ? 'bg-slate-900/40 border-slate-800/80 opacity-65' : 'bg-slate-900/90 border-cyan-500/25'
+        }`;
+        row.innerHTML = `
+          <label class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
+            <input type="checkbox" ${q.completed ? 'checked' : ''} onchange="toggleQuest('${q.id}')" class="hud-check" />
+            <span class="text-xs font-medium truncate ${q.completed ? 'line-through text-slate-400' : 'text-slate-100'}">${label}</span>
+          </label>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="font-hud font-bold text-[11px] text-cyan-400">+${q.xp}</span>
+            <button onclick="showQuestInfo('${q.id}')" title="Ver detalles" class="w-5 h-5 rounded-full bg-slate-800 hover:bg-cyan-500/20 border border-slate-600 text-[10px] font-bold text-cyan-300 flex items-center justify-center">i</button>
+          </div>
+        `;
+        mandList.appendChild(row);
+      });
+      document.getElementById('mandatory-counter').textContent = `${mandDone}/${mandTotal}`;
+
+      // Render Misiones Ocultas Desplegables (Estilo League of Legends)
+      const bonusDrawer = document.getElementById('bonus-drawer-content');
+      const bonusChevron = document.getElementById('bonus-chevron');
+      bonusDrawer.innerHTML = '';
+      let bonDone = 0, bonTotal = 0;
+
+      state.dailyQuests.filter(q => q.type === 'bonus').forEach(q => {
+        bonTotal++;
+        if (q.completed) bonDone++;
+
+        const item = document.createElement('label');
+        item.className = `flex items-center justify-between gap-2.5 p-2 rounded-xl border cursor-pointer transition ${
+          q.completed ? 'bg-slate-900/40 border-slate-800 opacity-60' : 'bg-slate-900/90 border-amber-500/25 hover:border-amber-400/60'
+        }`;
+        item.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0">
+            <input type="checkbox" ${q.completed ? 'checked' : ''} onchange="toggleQuest('${q.id}')" class="hud-check gold" />
+            <div class="min-w-0">
+              <div class="font-hud font-bold text-xs tracking-wide uppercase ${q.completed ? 'line-through text-slate-400' : 'text-amber-200'} truncate">${q.title}</div>
+              <div class="text-[11px] text-slate-400 truncate">${q.desc}</div>
+            </div>
+          </div>
+          <span class="shrink-0 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-400/40 font-display text-[10px] font-bold text-amber-300">
+            +${q.xp} XP
+          </span>
+        `;
+        bonusDrawer.appendChild(item);
+      });
+
+      document.getElementById('bonus-counter').textContent = `${bonDone}/${bonTotal}`;
+      if (state.bonusDrawerOpen) {
+        bonusDrawer.classList.remove('hidden');
+        bonusChevron.style.transform = 'rotate(180deg)';
+      } else {
+        bonusDrawer.classList.add('hidden');
+        bonusChevron.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', renderAll);
+  </script>
+</body>
+</html>
